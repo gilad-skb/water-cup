@@ -204,32 +204,36 @@
     });
 
     /* ── Touch / swipe input ───────────────────────────────────── */
-    let touchStartX = null;
-    let touchStartY = null;
-    const SWIPE_THRESHOLD = 10;   // pixels of horizontal movement before tilt activates
+    let touchStartX  = null;
+    let touchStartY  = null;
+    let lastTouchX   = null;
+    let swipeTiltDelta = 0;           // accumulated tilt from swipe, applied each frame
+    const SWIPE_SENSITIVITY = 0.004;  // radians per pixel of horizontal swipe movement
+    const TAP_THRESHOLD     = 10;     // pixels — within this counts as a tap, not a swipe
 
     canvas.addEventListener('touchstart', e => {
       e.preventDefault();
       if (!e.touches.length) return;
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
+      lastTouchX  = touchStartX;
     }, { passive: false });
 
     canvas.addEventListener('touchmove', e => {
       e.preventDefault();
-      if (!e.touches.length || touchStartX === null) return;
-      const dx = e.touches[0].clientX - touchStartX;
-      held['ArrowLeft']  = dx < -SWIPE_THRESHOLD;
-      held['ArrowRight'] = dx >  SWIPE_THRESHOLD;
+      if (!e.touches.length || lastTouchX === null) return;
+      const currentX = e.touches[0].clientX;
+      swipeTiltDelta += (currentX - lastTouchX) * SWIPE_SENSITIVITY;
+      lastTouchX = currentX;
     }, { passive: false });
 
     canvas.addEventListener('touchend', e => {
       e.preventDefault();
-      const t = e.changedTouches[0];
+      const t  = e.changedTouches[0];
       const dx = t.clientX - touchStartX;
       const dy = t.clientY - touchStartY;
       // treat as a tap if the finger didn't move far
-      if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
+      if (Math.abs(dx) < TAP_THRESHOLD && Math.abs(dy) < TAP_THRESHOLD) {
         const rect = canvas.getBoundingClientRect();
         const [wx, wy] = sw(t.clientX - rect.left, t.clientY - rect.top);
         for (let i = 0; i < 6; i++) {
@@ -239,10 +243,10 @@
           );
         }
       }
-      touchStartX = null;
-      touchStartY = null;
-      held['ArrowLeft']  = false;
-      held['ArrowRight'] = false;
+      touchStartX    = null;
+      touchStartY    = null;
+      lastTouchX     = null;
+      swipeTiltDelta = 0;
     }, { passive: false });
 
     /* ── Rendering ─────────────────────────────────────────────── */
@@ -352,10 +356,16 @@
       acc += Math.min((ts - prev) / 1000, 0.05);   // cap at 50 ms to avoid spiral-of-death
       prev = ts;
 
-      /* tilt the cup */
+      /* tilt the cup (keyboard + swipe) */
       let moved = false;
       if (held['ArrowLeft']  && tilt > -MAX_TILT) { tilt -= TILT_STEP; moved = true; }
       if (held['ArrowRight'] && tilt <  MAX_TILT) { tilt += TILT_STEP; moved = true; }
+      if (swipeTiltDelta !== 0) {
+        tilt += swipeTiltDelta;
+        tilt = Math.max(-MAX_TILT, Math.min(MAX_TILT, tilt));
+        swipeTiltDelta = 0;
+        moved = true;
+      }
       if (moved) {
         cupBody.setTransform(planck.Vec2(CUP_X, 0), tilt);
         for (const p of parts) p.setAwake(true);   // wake sleeping particles
