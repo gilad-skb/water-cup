@@ -105,10 +105,10 @@
     );
 
     // Add a small bottom mass to give the cup stability (like a weighted base)
-    /* emptyCupBody.createFixture(
+    emptyCupBody.createFixture(
       planck.Box(CUP2_HW * 0.8, 0.08, planck.Vec2(0, 0.08)),
-      { density: 3.0, friction: 0.6 }
-    ); */
+      { density: 1.0, friction: 0.3 }
+    );
 
     /* ── Cup (single static body with three edge fixtures) ─────── */
     const HW  = 1.20;   // half-width at base (metres)
