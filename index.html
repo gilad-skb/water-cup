@@ -83,7 +83,7 @@
     const TILT_STEP = 0.028;            // radians applied per animation frame
 
     /* ── Water particles ───────────────────────────────────────── */
-    const PR   = 0.05;   // particle radius (metres → ~4 px)
+    const PR   = 0.15;   // particle radius (metres → ~4 px)
     const parts = [];
 
     function spawnParticle(wx, wy) {
@@ -213,11 +213,11 @@
         ctx.beginPath();
         ctx.arc(...ws(pos.x, pos.y), r, 0, Math.PI * 2);
         ctx.fill();
-        ctx.stroke();
+        // ctx.stroke();
       }
 
       /* specular highlight dot */
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.42)';
+      /* ctx.fillStyle = 'rgba(255, 255, 255, 0.42)';
       for (const p of parts) {
         const pos = p.getPosition();
         const [sx, sy] = ws(pos.x, pos.y);
@@ -225,7 +225,7 @@
         ctx.arc(sx - r * 0.3, sy - r * 0.3, r * 0.22, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.restore();
+      ctx.restore(); */
     }
 
     function drawHUD() {
