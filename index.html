@@ -170,7 +170,7 @@
     }
 
     /* Hex-packed initial fill (~110 particles) */
-    (function seedWater() {
+    function seedWater() {
       const sp   = 0.19;   // centre-to-centre spacing
       const cols = 20;
       const rows = 18;
@@ -182,7 +182,9 @@
           if (Math.abs(x - CUP_X) < HW - PR) spawnParticle(x, y);  // check relative to cup center
         }
       }
-    }());
+    }
+
+    seedWater();
 
     /* ── Input handling ────────────────────────────────────────── */
     const held = {};
@@ -360,8 +362,8 @@
 
       /* wake all particles */
       // for (const p of parts) p.setAwake(true);
-      parts = [];
-      seedWater();
+     parts.splice(0, parts.length);
+     seedWater();
 
       /* reset state */
       gameOver      = false;
