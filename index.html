@@ -360,10 +360,10 @@
       tilt = 0;
       cupBody.setTransform(planck.Vec2(CUP_X, 0), 0);
 
-      /* wake all particles */
-      // for (const p of parts) p.setAwake(true);
-     parts.splice(0, parts.length);
-     seedWater();
+      /* destroy all existing particle bodies, then re-seed */
+      for (const p of parts) world.destroyBody(p);
+      parts.splice(0, parts.length);
+      seedWater();
 
       /* reset state */
       gameOver      = false;
