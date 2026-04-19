@@ -83,7 +83,7 @@
     const TILT_STEP = 0.028;            // radians applied per animation frame
 
     /* ── Water particles ───────────────────────────────────────── */
-    const PR   = 0.08;   // particle radius (metres → ~6 px)
+    const PR   = 0.05;   // particle radius (metres → ~4 px)
     const parts = [];
 
     function spawnParticle(wx, wy) {
@@ -138,12 +138,14 @@
 
     /* ── Touch / swipe input ───────────────────────────────────── */
     let touchStartX = null;
+    let touchStartY = null;
     const SWIPE_THRESHOLD = 10;   // pixels of horizontal movement before tilt activates
 
     canvas.addEventListener('touchstart', e => {
       e.preventDefault();
       if (!e.touches.length) return;
       touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
     }, { passive: false });
 
     canvas.addEventListener('touchmove', e => {
@@ -156,7 +158,22 @@
 
     canvas.addEventListener('touchend', e => {
       e.preventDefault();
+      const t = e.changedTouches[0];
+      const dx = t.clientX - touchStartX;
+      const dy = t.clientY - touchStartY;
+      // treat as a tap if the finger didn't move far
+      if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
+        const rect = canvas.getBoundingClientRect();
+        const [wx, wy] = sw(t.clientX - rect.left, t.clientY - rect.top);
+        for (let i = 0; i < 6; i++) {
+          spawnParticle(
+            wx + (Math.random() - 0.5) * 0.4,
+            wy + (Math.random() - 0.5) * 0.4
+          );
+        }
+      }
       touchStartX = null;
+      touchStartY = null;
       held['ArrowLeft']  = false;
       held['ArrowRight'] = false;
     }, { passive: false });
