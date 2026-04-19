@@ -64,10 +64,14 @@
     const TABLE_Y     = -6.5;   // table surface Y position (metres)
     const TABLE_LEFT  = 1.5;    // left edge of table
     const TABLE_RIGHT = 9.0;    // right edge of table
+    const TABLE_THICKNESS = 0.5; // table thickness for solid collision
 
     const tableBody = world.createBody({ type: 'static', position: planck.Vec2(0, 0) });
+    // Use a Box instead of Edge so the cup walls collide properly when tilted
+    const tableWidth = (TABLE_RIGHT - TABLE_LEFT) / 2;
+    const tableCenterX = (TABLE_LEFT + TABLE_RIGHT) / 2;
     tableBody.createFixture(
-      planck.Edge(planck.Vec2(TABLE_LEFT, TABLE_Y), planck.Vec2(TABLE_RIGHT, TABLE_Y)),
+      planck.Box(tableWidth, TABLE_THICKNESS / 2, planck.Vec2(tableCenterX, TABLE_Y - TABLE_THICKNESS / 2)),
       { friction: 0.6, restitution: 0.05 }
     );
 
@@ -170,12 +174,12 @@
       const sp   = 0.19;   // centre-to-centre spacing
       const cols = 20;
       const rows = 18;
-      const x0   = - (cols - 1) * sp * 0.5;
+      const x0   = CUP_X - (cols - 1) * sp * 0.5;  // center water in the cup
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const x = x0 + c * sp + (r % 2) * sp * 0.5;   // alternating-row offset for hex packing
           const y = PR + 0.06 + r * sp * 0.866;
-          if (Math.abs(x) < HW - PR) spawnParticle(x, y);
+          if (Math.abs(x - CUP_X) < HW - PR) spawnParticle(x, y);  // check relative to cup center
         }
       }
     }());
@@ -265,16 +269,17 @@
 
     function drawTable() {
       ctx.save();
-      ctx.strokeStyle = '#8b7355';
-      ctx.lineWidth   = 4;
-      ctx.lineCap     = 'round';
+      ctx.fillStyle   = '#8b7355';
+      ctx.strokeStyle = '#5a4a3a';
+      ctx.lineWidth   = 2;
       ctx.shadowColor = '#5a4a3a';
       ctx.shadowBlur  = 6;
 
-      ctx.beginPath();
-      ctx.moveTo(...ws(TABLE_LEFT, TABLE_Y));
-      ctx.lineTo(...ws(TABLE_RIGHT, TABLE_Y));
-      ctx.stroke();
+      // Draw table as a filled rectangle matching the Box fixture
+      const [x1, y1] = ws(TABLE_LEFT, TABLE_Y);
+      const [x2, y2] = ws(TABLE_RIGHT, TABLE_Y - TABLE_THICKNESS);
+      ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
       ctx.restore();
     }
 
