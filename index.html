@@ -340,7 +340,7 @@
 
     /* ── Game state: spill detection & countdown ──────────────── */
     const SPILL_ANGLE   = Math.PI / 3;   // 60° — beyond this the cup is "spilled"
-    const COUNTDOWN_SEC = 5;             // total countdown seconds
+    const COUNTDOWN_SEC = 10;             // total countdown seconds
 
     let gameOver      = false;
     let gameOverMsg   = '';
@@ -359,7 +359,9 @@
       cupBody.setTransform(planck.Vec2(CUP_X, 0), 0);
 
       /* wake all particles */
-      for (const p of parts) p.setAwake(true);
+      // for (const p of parts) p.setAwake(true);
+      parts = [];
+      seedWater();
 
       /* reset state */
       gameOver      = false;
