@@ -114,8 +114,9 @@
     const HW  = 1.20;   // half-width at base (metres)
     const CH  = 3.00;   // cup wall height
     const FLR = 0.28;   // outward flare per side at the top
+    const CUP_X = 1;
 
-    const cupBody = world.createBody({ type: 'static', position: planck.Vec2(1, 0) });
+    const cupBody = world.createBody({ type: 'static', position: planck.Vec2(CUP_X, 0) });
     const wallDef = { friction: 0.3, restitution: 0.1 };
 
     // bottom edge
@@ -339,7 +340,7 @@
       if (held['ArrowLeft']  && tilt > -MAX_TILT) { tilt -= TILT_STEP; moved = true; }
       if (held['ArrowRight'] && tilt <  MAX_TILT) { tilt += TILT_STEP; moved = true; }
       if (moved) {
-        cupBody.setTransform(planck.Vec2(0, 0), tilt);
+        cupBody.setTransform(planck.Vec2(CUP_X, 0), tilt);
         for (const p of parts) p.setAwake(true);   // wake sleeping particles
       }
 
