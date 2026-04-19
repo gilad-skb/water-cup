@@ -193,6 +193,7 @@
     window.addEventListener('keyup', e => { held[e.key] = false; });
 
     canvas.addEventListener('click', e => {
+      if (gameOver) { resetGame(); return; }
       const rect = canvas.getBoundingClientRect();
       const [wx, wy] = sw(e.clientX - rect.left, e.clientY - rect.top);
       for (let i = 0; i < 6; i++) {
@@ -229,6 +230,7 @@
 
     canvas.addEventListener('touchend', e => {
       e.preventDefault();
+      if (gameOver) { resetGame(); touchStartX = null; touchStartY = null; lastTouchX = null; swipeTiltDelta = 0; return; }
       const t  = e.changedTouches[0];
       const dx = t.clientX - touchStartX;
       const dy = t.clientY - touchStartY;
@@ -336,11 +338,70 @@
       ctx.restore(); */
     }
 
+    /* ── Game state: spill detection & countdown ──────────────── */
+    const SPILL_ANGLE   = Math.PI / 3;   // 60° — beyond this the cup is "spilled"
+    const COUNTDOWN_SEC = 5;             // total countdown seconds
+
+    let gameOver      = false;
+    let gameOverMsg   = '';
+    let countdownLeft = COUNTDOWN_SEC;   // seconds remaining (float)
+    let lastFrameTs   = null;            // for countdown delta-time
+
+    function resetGame() {
+      /* reset empty cup */
+      emptyCupBody.setTransform(planck.Vec2(CUP2_X, TABLE_Y + 0.01), 0);
+      emptyCupBody.setLinearVelocity(planck.Vec2(0, 0));
+      emptyCupBody.setAngularVelocity(0);
+      emptyCupBody.setAwake(true);
+
+      /* reset pouring cup tilt */
+      tilt = 0;
+      cupBody.setTransform(planck.Vec2(CUP_X, 0), 0);
+
+      /* wake all particles */
+      for (const p of parts) p.setAwake(true);
+
+      /* reset state */
+      gameOver      = false;
+      gameOverMsg   = '';
+      countdownLeft = COUNTDOWN_SEC;
+      lastFrameTs   = null;
+      prev          = null;
+      acc           = 0;
+    }
+
     function drawHUD() {
       ctx.save();
       ctx.fillStyle = '#3c4f66';
       ctx.font      = '12px Arial, sans-serif';
       ctx.fillText('Particles: ' + parts.length, 10, 22);
+
+      /* countdown timer (top-right corner) */
+      const timerText = Math.ceil(countdownLeft) + 's';
+      ctx.fillStyle   = countdownLeft <= 2 ? '#ff4444' : '#6a82a0';
+      ctx.font        = '20px Arial, sans-serif';
+      ctx.textAlign   = 'right';
+      ctx.fillText(timerText, W - 14, 28);
+      ctx.restore();
+    }
+
+    function drawGameOver() {
+      /* darken background */
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.fillRect(0, 0, W, H);
+
+      /* message */
+      ctx.fillStyle = '#ffffff';
+      ctx.font      = 'bold 28px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(gameOverMsg, W / 2, H / 2 - 20);
+
+      /* sub-prompt */
+      ctx.font      = '18px Arial, sans-serif';
+      ctx.fillStyle = '#aaaaaa';
+      ctx.fillText('Click or tap to try again', W / 2, H / 2 + 24);
       ctx.restore();
     }
 
@@ -353,8 +414,36 @@
       requestAnimationFrame(frame);
 
       if (!prev) { prev = ts; return; }
-      acc += Math.min((ts - prev) / 1000, 0.05);   // cap at 50 ms to avoid spiral-of-death
+      const dtSec = Math.min((ts - prev) / 1000, 0.05);   // cap at 50 ms
+      acc += dtSec;
       prev = ts;
+
+      /* ── game-over overlay (freeze physics, just draw) ──── */
+      if (gameOver) {
+        ctx.clearRect(0, 0, W, H);
+        drawTable();
+        drawCup();
+        drawEmptyCup();
+        drawParticles();
+        drawHUD();
+        drawGameOver();
+        return;
+      }
+
+      /* ── countdown timer ─────────────────────────────────── */
+      countdownLeft -= dtSec;
+      if (countdownLeft <= 0) {
+        countdownLeft = 0;
+        gameOver    = true;
+        gameOverMsg = "Time's up! Try again";
+      }
+
+      /* ── spill detection (check empty cup angle) ────────── */
+      const cupAngle = Math.abs(emptyCupBody.getAngle());
+      if (cupAngle > SPILL_ANGLE) {
+        gameOver    = true;
+        gameOverMsg = 'Cup spilled! Try again';
+      }
 
       /* tilt the cup (keyboard + swipe) */
       let moved = false;
