@@ -1,3 +1,5 @@
+https://gilad-skb.github.io/water-cup
+
 # 2D Water Cup Simulation
 
 A real-time 2D water cup simulation built with [planck.js](https://piqnt.com/planck.js) (a JavaScript port of Box2D) rendered on an HTML5 Canvas.
