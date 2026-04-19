@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2D Water Cup Simulation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0d1117;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      background: #0f0f1e;
+      border: 2px solid #1e2d50;
+      border-radius: 8px;
+      display: block;
+    }
+
+    #info {
+      margin-top: 12px;
+      color: #6a82a0;
+      font-size: 14px;
+      letter-spacing: 0.4px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="600" height="600"></canvas>
+  <p id="info">← → Arrow keys to tilt the cup &nbsp;|&nbsp; Click to add water</p>
+
+  <!-- planck.js physics engine (Box2D port) -->
+  <script src="https://cdn.jsdelivr.net/npm/planck@1.0.5/dist/planck.min.js"></script>
+
+  <script>
+  (function () {
+    'use strict';
+
+    /* ── Canvas setup ──────────────────────────────────────────── */
+    const canvas = document.getElementById('canvas');
+    const ctx    = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+
+    /* ── Physics world ─────────────────────────────────────────── */
+    const world = planck.World({ gravity: planck.Vec2(0, -10) });
+
+    /* world → screen transform (Y axis flipped) */
+    const SCALE = 80;        // pixels per metre
+    const OX    = W * 0.5;   // screen x for world x = 0
+    const OY    = H * 0.62;  // screen y for world y = 0
+
+    function ws(x, y)  { return [OX + x * SCALE, OY - y * SCALE]; }   // world → screen
+    function sw(cx, cy){ return [(cx - OX) / SCALE, (OY - cy) / SCALE]; } // screen → world
+
+    /* ── Cup (single static body with three edge fixtures) ─────── */
+    const HW  = 1.50;   // half-width at base (metres)
+    const CH  = 3.00;   // cup wall height
+    const FLR = 0.28;   // outward flare per side at the top
+
+    const cupBody = world.createBody({ type: 'static', position: planck.Vec2(0, 0) });
+    const wallDef = { friction: 0.3, restitution: 0.1 };
+
+    // bottom edge
+    cupBody.createFixture(
+      planck.Edge(planck.Vec2(-HW, 0),         planck.Vec2(HW, 0)),         wallDef);
+    // left wall (slightly flared outward)
+    cupBody.createFixture(
+      planck.Edge(planck.Vec2(-HW, 0),         planck.Vec2(-HW - FLR, CH)), wallDef);
+    // right wall
+    cupBody.createFixture(
+      planck.Edge(planck.Vec2(HW, 0),          planck.Vec2(HW + FLR, CH)),  wallDef);
+
+    let tilt = 0;                       // current cup rotation angle (radians)
+    const MAX_TILT  = Math.PI / 2;      // maximum tilt (90°)
+    const TILT_STEP = 0.028;            // radians applied per animation frame
+
+    /* ── Water particles ───────────────────────────────────────── */
+    const PR   = 0.13;   // particle radius (metres → ~10 px)
+    const parts = [];
+
+    function spawnParticle(wx, wy) {
+      const body = world.createBody({
+        type:           'dynamic',
+        position:       planck.Vec2(wx, wy),
+        linearDamping:  1.2,
+        angularDamping: 0.5,
+        allowSleep:     true
+      });
+      body.createFixture(planck.Circle(PR), {
+        density:     1.0,
+        friction:    0.05,
+        restitution: 0.15
+      });
+      parts.push(body);
+    }
+
+    /* Hex-packed initial fill (~110 particles) */
+    (function seedWater() {
+      const sp   = 0.27;   // centre-to-centre spacing
+      const cols = 10;
+      const rows = 11;
+      const x0   = -(cols - 1) * sp * 0.5;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const x = x0 + c * sp + (r % 2) * sp * 0.5;   // alternating-row offset for hex packing
+          const y = PR + 0.06 + r * sp * 0.866;
+          if (Math.abs(x) < HW - PR) spawnParticle(x, y);
+        }
+      }
+    }());
+
+    /* ── Input handling ────────────────────────────────────────── */
+    const held = {};
+    window.addEventListener('keydown', e => {
+      held[e.key] = true;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.preventDefault();
+    });
+    window.addEventListener('keyup', e => { held[e.key] = false; });
+
+    canvas.addEventListener('click', e => {
+      const rect = canvas.getBoundingClientRect();
+      const [wx, wy] = sw(e.clientX - rect.left, e.clientY - rect.top);
+      for (let i = 0; i < 6; i++) {
+        spawnParticle(
+          wx + (Math.random() - 0.5) * 0.4,
+          wy + (Math.random() - 0.5) * 0.4
+        );
+      }
+    });
+
+    /* ── Rendering ─────────────────────────────────────────────── */
+    function drawCup() {
+      ctx.save();
+      ctx.strokeStyle = '#c8deff';
+      ctx.lineWidth   = 3.5;
+      ctx.lineCap     = 'round';
+      ctx.shadowColor = '#5577bb';
+      ctx.shadowBlur  = 8;
+
+      for (let f = cupBody.getFixtureList(); f; f = f.getNext()) {
+        const s = f.getShape();
+        if (s.getType() !== 'edge') continue;
+        const a = cupBody.getWorldPoint(s.m_vertex1);
+        const b = cupBody.getWorldPoint(s.m_vertex2);
+        ctx.beginPath();
+        ctx.moveTo(...ws(a.x, a.y));
+        ctx.lineTo(...ws(b.x, b.y));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawParticles() {
+      const r = PR * SCALE;   // radius in pixels
+
+      /* main fill */
+      ctx.save();
+      ctx.fillStyle   = '#1565c0';
+      ctx.strokeStyle = 'rgba(100, 181, 246, 0.60)';
+      ctx.lineWidth   = 1;
+      for (const p of parts) {
+        const pos = p.getPosition();
+        ctx.beginPath();
+        ctx.arc(...ws(pos.x, pos.y), r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      /* specular highlight dot */
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.42)';
+      for (const p of parts) {
+        const pos = p.getPosition();
+        const [sx, sy] = ws(pos.x, pos.y);
+        ctx.beginPath();
+        ctx.arc(sx - r * 0.3, sy - r * 0.3, r * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function drawHUD() {
+      ctx.save();
+      ctx.fillStyle = '#3c4f66';
+      ctx.font      = '12px Arial, sans-serif';
+      ctx.fillText('Particles: ' + parts.length, 10, 22);
+      ctx.restore();
+    }
+
+    /* ── Main animation loop ───────────────────────────────────── */
+    const FIXED_DT = 1 / 60;
+    let prev = null;
+    let acc  = 0;
+
+    function frame(ts) {
+      requestAnimationFrame(frame);
+
+      if (!prev) { prev = ts; return; }
+      acc += Math.min((ts - prev) / 1000, 0.05);   // cap at 50 ms to avoid spiral-of-death
+      prev = ts;
+
+      /* tilt the cup */
+      let moved = false;
+      if (held['ArrowLeft']  && tilt > -MAX_TILT) { tilt -= TILT_STEP; moved = true; }
+      if (held['ArrowRight'] && tilt <  MAX_TILT) { tilt += TILT_STEP; moved = true; }
+      if (moved) {
+        cupBody.setTransform(planck.Vec2(0, 0), tilt);
+        for (const p of parts) p.setAwake(true);   // wake sleeping particles
+      }
+
+      /* fixed-timestep physics */
+      while (acc >= FIXED_DT) {
+        world.step(FIXED_DT, 8, 3);
+        acc -= FIXED_DT;
+      }
+
+      /* render */
+      ctx.clearRect(0, 0, W, H);
+      drawCup();
+      drawParticles();
+      drawHUD();
+    }
+
+    requestAnimationFrame(frame);
+  }());
+  </script>
+</body>
+</html>
