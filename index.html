@@ -110,6 +110,17 @@
       { density: 1.0, friction: 0.3 }
     );
 
+    // Add small circles at bottom corners so cup walls collide with the table when tilted
+    const cornerRadius = 0.06;
+    emptyCupBody.createFixture(
+      planck.Circle(planck.Vec2(-CUP2_HW, 0), cornerRadius),
+      { density: 0.1, friction: 0.6, restitution: 0.05 }
+    );
+    emptyCupBody.createFixture(
+      planck.Circle(planck.Vec2(CUP2_HW, 0), cornerRadius),
+      { density: 0.1, friction: 0.6, restitution: 0.05 }
+    );
+
     /* ── Cup (single static body with three edge fixtures) ─────── */
     const HW  = 1.20;   // half-width at base (metres)
     const CH  = 3.00;   // cup wall height
@@ -134,7 +145,8 @@
     const TILT_STEP = 0.028;            // radians applied per animation frame
 
     /* ── Water particles ───────────────────────────────────────── */
-    const PR   = 0.15;   // particle radius (metres → ~4 px)
+    const PR   = 0.15;     // visual particle radius (metres → ~4 px)
+    const PR_C = 0.10;     // collision radius (smaller so particles overlap visually)
     const parts = [];
 
     function spawnParticle(wx, wy) {
@@ -145,7 +157,7 @@
         angularDamping: 0.5,
         allowSleep:     true
       });
-      body.createFixture(planck.Circle(PR), {
+      body.createFixture(planck.Circle(PR_C), {
         density:     2.0,
         friction:    0.05,
         restitution: 0.15
