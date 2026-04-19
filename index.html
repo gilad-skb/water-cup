@@ -34,7 +34,7 @@
 </head>
 <body>
   <canvas id="canvas" width="600" height="600"></canvas>
-  <p id="info">← → Arrow keys to tilt the cup &nbsp;|&nbsp; Click to add water</p>
+  <p id="info">← → Arrow keys / swipe to tilt the cup &nbsp;|&nbsp; Click to add water</p>
 
   <!-- planck.js physics engine (Box2D port) -->
   <script src="https://cdn.jsdelivr.net/npm/planck@1.0.5/dist/planck.min.js"></script>
@@ -83,7 +83,7 @@
     const TILT_STEP = 0.028;            // radians applied per animation frame
 
     /* ── Water particles ───────────────────────────────────────── */
-    const PR   = 0.13;   // particle radius (metres → ~10 px)
+    const PR   = 0.08;   // particle radius (metres → ~6 px)
     const parts = [];
 
     function spawnParticle(wx, wy) {
@@ -104,9 +104,9 @@
 
     /* Hex-packed initial fill (~110 particles) */
     (function seedWater() {
-      const sp   = 0.27;   // centre-to-centre spacing
-      const cols = 10;
-      const rows = 11;
+      const sp   = 0.19;   // centre-to-centre spacing
+      const cols = 14;
+      const rows = 14;
       const x0   = -(cols - 1) * sp * 0.5;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -135,6 +135,31 @@
         );
       }
     });
+
+    /* ── Touch / swipe input ───────────────────────────────────── */
+    let touchStartX = null;
+    const SWIPE_THRESHOLD = 10;   // pixels of horizontal movement before tilt activates
+
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (!e.touches.length) return;
+      touchStartX = e.touches[0].clientX;
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (!e.touches.length || touchStartX === null) return;
+      const dx = e.touches[0].clientX - touchStartX;
+      held['ArrowLeft']  = dx < -SWIPE_THRESHOLD;
+      held['ArrowRight'] = dx >  SWIPE_THRESHOLD;
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', e => {
+      e.preventDefault();
+      touchStartX = null;
+      held['ArrowLeft']  = false;
+      held['ArrowRight'] = false;
+    }, { passive: false });
 
     /* ── Rendering ─────────────────────────────────────────────── */
     function drawCup() {
