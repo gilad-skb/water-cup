@@ -61,7 +61,7 @@
     function sw(cx, cy){ return [(cx - OX) / SCALE, (OY - cy) / SCALE]; } // screen → world
 
     /* ── Table surface (static) ─────────────────────────────────── */
-    const TABLE_Y     = -4.5;   // table surface Y position (metres)
+    const TABLE_Y     = -5.5;   // table surface Y position (metres)
     const TABLE_LEFT  = 1.5;    // left edge of table
     const TABLE_RIGHT = 9.0;    // right edge of table
 
@@ -146,7 +146,7 @@
         allowSleep:     true
       });
       body.createFixture(planck.Circle(PR), {
-        density:     1.0,
+        density:     2.0,
         friction:    0.05,
         restitution: 0.15
       });
